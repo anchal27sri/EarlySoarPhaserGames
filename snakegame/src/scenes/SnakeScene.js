@@ -6,7 +6,7 @@ import { Scene, Math as PMath } from 'phaser';
 
 const SNAKE_SPEED = 2;
 const WAVE_MAGNITUDE = 8.4;
-const WAVE_FREQUENCY = 0.012;
+const WAVE_FREQUENCY = 0.0084;
 
 const HEAD_RADIUS = 6;
 const TAIL_RADIUS = 1.5;
