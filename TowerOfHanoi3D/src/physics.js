@@ -1,20 +1,39 @@
 import {
   GRAVITY, GROUND_Y, PEG_REST_Y, PEG_X,
-  RING_HALF_W, RING_HALF_H,
+  RING_HALF_W, RING_HALF_H, BASE_RADIUS, BASE_TOP_Y,
+  RING_TUBE_RADIUS, THREADED_MAX_X,
 } from "./constants.js";
 
 export function applyGravity(rings, draggedRing, dt) {
   for (const r of rings) {
     if (r === draggedRing) continue;
 
-    const restY = r.onPeg ? PEG_REST_Y : GROUND_Y;
-
     r.velocityY += GRAVITY * dt;
     r.mesh.position.y += r.velocityY * dt;
+
+    const distToPeg = Math.abs(r.mesh.position.x - PEG_X);
+
+    // Check if ring overlaps the base horizontally
+    const overlapsBase = distToPeg < RING_HALF_W + BASE_RADIUS;
+    // Check if ring is threaded (rod goes through the hole)
+    const isThreaded = r.onPeg || r.threaded || distToPeg < THREADED_MAX_X;
+
+    let restY = GROUND_Y;
+    if (isThreaded) {
+      // Threaded rings rest on top of the base
+      restY = PEG_REST_Y;
+    } else if (overlapsBase) {
+      // Non-threaded rings that overlap the base land on top of it
+      restY = BASE_TOP_Y + RING_TUBE_RADIUS;
+    }
 
     if (r.mesh.position.y <= restY) {
       r.mesh.position.y = restY;
       r.velocityY = 0;
+      if (isThreaded) {
+        r.onPeg = true;
+        r.threaded = true;
+      }
     }
 
     if (r.onPeg) {

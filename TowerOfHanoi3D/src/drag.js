@@ -58,9 +58,13 @@ function clampDragPosition(ring, newX, newY, rings) {
       // Threaded: lock X to peg center, only allow vertical movement
       newX = PEG_X;
     } else {
-      // Lock to the side the ring started on — prevent teleporting through
-      if (dragSide !== 0 && absDistX < OUTSIDE_MIN_X) {
-        newX = PEG_X + dragSide * OUTSIDE_MIN_X;
+      // Always enforce the rod as a solid barrier — keep ring on its current side
+      if (dragSide !== 0) {
+        if (dragSide > 0 && newX < PEG_X + OUTSIDE_MIN_X) {
+          newX = PEG_X + OUTSIDE_MIN_X;
+        } else if (dragSide < 0 && newX > PEG_X - OUTSIDE_MIN_X) {
+          newX = PEG_X - OUTSIDE_MIN_X;
+        }
       } else if (absDistX < OUTSIDE_MIN_X) {
         newX = PEG_X + (distXToPeg >= 0 ? OUTSIDE_MIN_X : -OUTSIDE_MIN_X);
       }
