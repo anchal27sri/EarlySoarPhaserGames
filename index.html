@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>EarlySoar Games</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@700;800&display=swap');
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Nunito', Arial, sans-serif;
+            overflow-x: hidden;
+            padding: 20px;
+        }
+
+        /* Animated background blobs */
+        body::before, body::after {
+            content: '';
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.3;
+            z-index: 0;
+            animation: float 8s ease-in-out infinite;
+        }
+        body::before {
+            width: 400px; height: 400px;
+            background: #ff6b6b;
+            top: -100px; left: -100px;
+        }
+        body::after {
+            width: 350px; height: 350px;
+            background: #4ecdc4;
+            bottom: -100px; right: -100px;
+            animation-delay: -4s;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(30px, 20px) scale(1.1); }
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+            max-width: 900px;
+            width: 100%;
+        }
+
+        .title {
+            font-family: 'Fredoka One', cursive;
+            font-size: clamp(2.5rem, 8vw, 4.5rem);
+            color: #fff;
+            text-shadow:
+                0 0 20px rgba(255, 107, 107, 0.5),
+                0 0 40px rgba(78, 205, 196, 0.3),
+                3px 3px 0 #302b63;
+            margin-bottom: 10px;
+            letter-spacing: 2px;
+        }
+
+        .title .emoji {
+            display: inline-block;
+            animation: bounce 2s ease-in-out infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .subtitle {
+            font-size: clamp(0.9rem, 3vw, 1.2rem);
+            color: rgba(255, 255, 255, 0.6);
+            margin-bottom: 50px;
+            font-weight: 700;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+        }
+
+        .cards {
+            display: flex;
+            gap: 30px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 2px solid rgba(255, 255, 255, 0.12);
+            border-radius: 24px;
+            padding: 40px 30px 35px;
+            width: 240px;
+            cursor: pointer;
+            transition: all 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            text-decoration: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 18px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 4px;
+            border-radius: 24px 24px 0 0;
+            transition: height 0.3s ease;
+        }
+
+        .card:nth-child(1)::before { background: linear-gradient(90deg, #ff6b6b, #ff8e53); }
+        .card:nth-child(2)::before { background: linear-gradient(90deg, #4ecdc4, #44bd56); }
+        .card:nth-child(3)::before { background: linear-gradient(90deg, #a18cd1, #fbc2eb); }
+
+        .card:hover {
+            transform: translateY(-12px) scale(1.03);
+            border-color: rgba(255, 255, 255, 0.3);
+            box-shadow:
+                0 20px 60px rgba(0, 0, 0, 0.4),
+                0 0 30px rgba(255, 255, 255, 0.05);
+        }
+
+        .card:hover::before {
+            height: 6px;
+        }
+
+        .card:active {
+            transform: translateY(-4px) scale(0.98);
+        }
+
+        .card-icon {
+            font-size: 64px;
+            line-height: 1;
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover .card-icon {
+            transform: scale(1.15) rotate(-5deg);
+        }
+
+        .card-name {
+            font-family: 'Fredoka One', cursive;
+            font-size: 1.3rem;
+            color: #fff;
+            text-align: center;
+            line-height: 1.3;
+        }
+
+        .card-desc {
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.5);
+            text-align: center;
+            line-height: 1.4;
+        }
+
+        .card:nth-child(1):hover { background: rgba(255, 107, 107, 0.15); }
+        .card:nth-child(2):hover { background: rgba(78, 205, 196, 0.15); }
+        .card:nth-child(3):hover { background: rgba(161, 140, 209, 0.15); }
+
+        .footer {
+            margin-top: 60px;
+            color: rgba(255, 255, 255, 0.3);
+            font-size: 0.8rem;
+        }
+
+        /* Mobile adjustments */
+        @media (max-width: 600px) {
+            .cards {
+                flex-direction: column;
+                align-items: center;
+                gap: 20px;
+            }
+            .card {
+                width: 85%;
+                max-width: 300px;
+                padding: 30px 25px 25px;
+                flex-direction: row;
+                gap: 20px;
+            }
+            .card-icon {
+                font-size: 48px;
+            }
+            .card-text {
+                text-align: left;
+            }
+            .card-name {
+                text-align: left;
+                font-size: 1.1rem;
+            }
+            .card-desc {
+                text-align: left;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="title"><span class="emoji">🚀</span> EarlySoar Games</h1>
+        <p class="subtitle">Pick a game and let's play!</p>
+
+        <div class="cards">
+            <a class="card" href="FruitNinja/index.html">
+                <div class="card-icon">🍉</div>
+                <div class="card-text">
+                    <div class="card-name">Fruit Ninja: ABC</div>
+                    <div class="card-desc">Slice flying letters with your ninja blade!</div>
+                </div>
+            </a>
+
+            <a class="card" href="snakegame/index.html">
+                <div class="card-icon">🐍</div>
+                <div class="card-text">
+                    <div class="card-name">Snake Letter Game</div>
+                    <div class="card-desc">Guide the snake to collect letters!</div>
+                </div>
+            </a>
+
+            <a class="card" href="TowerOfHanoi/index.html">
+                <div class="card-icon">🗼</div>
+                <div class="card-text">
+                    <div class="card-name">Tower of Hanoi</div>
+                    <div class="card-desc">Solve the classic disk puzzle!</div>
+                </div>
+            </a>
+        </div>
+
+        <p class="footer">EarlySoar Games &mdash; Learn while you play!</p>
+    </div>
+</body>
+</html>

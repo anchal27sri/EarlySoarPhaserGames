@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <!-- Prevent mobile browser zoom/scaling so the game canvas fills the viewport -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Snake Letter Game</title>
+    <style>
+        /* Remove all default spacing and hide overflow so the canvas is fullscreen */
+        * { margin: 0; padding: 0; }
+        body {
+            background: #000;
+            overflow: hidden;
+            /* Prevent pull-to-refresh and bounce scrolling on mobile */
+            overscroll-behavior: none;
+            touch-action: none;
+        }
+        #game-container {
+            width: 100vw;
+            height: 100vh;
+        }
+        .home-btn {
+            position: fixed;
+            top: 12px;
+            left: 12px;
+            z-index: 9999;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 20px;
+            transition: background 0.2s;
+        }
+        .home-btn:hover { background: rgba(255,255,255,0.2); }
+    </style>
+</head>
+<body>
+    <a class="home-btn" href="../index.html" title="Back to Home">🏠</a>
+    <div id="game-container"></div>
+    <script type="module" src="./src/main.js"></script>
+</body>
+</html>
