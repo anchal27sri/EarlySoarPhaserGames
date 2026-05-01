@@ -5,7 +5,7 @@ import { Scene, Math as PMath } from 'phaser';
 // ─────────────────────────────────────────────────────────────────────────────
 
 const SNAKE_SPEED = 2;
-const WAVE_MAGNITUDE = 12;
+const WAVE_MAGNITUDE = 8.4;
 const WAVE_FREQUENCY = 0.012;
 
 const HEAD_RADIUS = 6;
@@ -571,8 +571,6 @@ export class SnakeScene extends Scene {
         if (this.letterTween) this.letterTween.destroy();
         this.letterCircle.destroy();
         this.letterText.destroy();
-
-        this.numSegments += GROW_AMOUNT;
 
         this.spawnLetter();
     }
