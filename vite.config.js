@@ -12,6 +12,7 @@ export default defineConfig({
         snakegame: resolve(__dirname, 'snakegame/index.html'),
         towerofhanoi2d: resolve(__dirname, 'TowerOfHanoi2D/index.html'),
         towerofhanoi3d: resolve(__dirname, 'TowerOfHanoi3D/index.html'),
+        bouncingball: resolve(__dirname, 'BouncingBall/index.html'),
       },
     },
   },
