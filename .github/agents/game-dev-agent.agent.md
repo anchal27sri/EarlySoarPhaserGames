@@ -142,6 +142,26 @@ After building the game, update [index.html](index.html) (the workspace root lau
 
 Keep the icon as a single emoji and the description under ~50 characters so it fits the mobile card layout.
 
+### Also update the root `vite.config.js` build inputs (REQUIRED)
+
+The workspace root [vite.config.js](vite.config.js) has an explicit `rollupOptions.input` map with one entry per game. The dev server serves new games automatically, but **the production build (`npm run build` and the GitHub Pages deploy workflow) will silently exclude any game missing from this map**. Always add a new entry when you add a new game:
+
+```js
+// vite.config.js (workspace root)
+rollupOptions: {
+  input: {
+    main: resolve(__dirname, 'index.html'),
+    fruitninja: resolve(__dirname, 'FruitNinja/index.html'),
+    snakegame: resolve(__dirname, 'snakegame/index.html'),
+    towerofhanoi2d: resolve(__dirname, 'TowerOfHanoi2D/index.html'),
+    towerofhanoi3d: resolve(__dirname, 'TowerOfHanoi3D/index.html'),
+    gamename: resolve(__dirname, 'GameName/index.html'), // <- add this
+  },
+},
+```
+
+Use a lowercase, hyphen-free key that matches the folder name. After adding the entry, verify with `npm run build` from the workspace root that the game's `index.html` appears in `dist/GameName/`.
+
 ## Definition of done — verify before reporting success
 
 Run through this checklist before telling the user the game is ready:
@@ -153,6 +173,7 @@ Run through this checklist before telling the user the game is ready:
 - [ ] Core gameplay loop runs: spawn → input → win/lose state → restart.
 - [ ] No console errors during a full play session.
 - [ ] Game launches from the root [index.html](index.html) card.
+- [ ] New game added to the `rollupOptions.input` map in the root [vite.config.js](vite.config.js) so it ships in `npm run build` and the GitHub Pages deploy.
 - [ ] Layout looks correct on a portrait phone viewport (≈ 390×844) — verify by resizing the browser.
 - [ ] Touch input works (test by dragging on the canvas).
 - [ ] All requested features from the design brief are implemented.
