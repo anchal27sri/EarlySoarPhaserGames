@@ -1,8 +1,13 @@
 name: Deploy to GitHub Pages
 
+# Triggered by every push to main. Combined with branch-protection rules on
+# `main` (require pull request before merging), this effectively becomes
+# "deploy when a PR is merged". Using `push` (instead of `pull_request: closed`)
+# keeps the workflow running on the `main` ref, which is what the GitHub Pages
+# environment protection rules allow by default. A `pull_request` trigger runs
+# on `refs/pull/N/merge` and is blocked by those protection rules.
 on:
-  pull_request:
-    types: [closed]
+  push:
     branches: [main]
 
 permissions:
@@ -16,8 +21,6 @@ concurrency:
 
 jobs:
   deploy:
-    # Only run when the pull request was actually merged (not just closed without merging)
-    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -34,4 +37,5 @@ jobs:
           path: dist
       - id: deployment
         uses: actions/deploy-pages@v4
+
 
