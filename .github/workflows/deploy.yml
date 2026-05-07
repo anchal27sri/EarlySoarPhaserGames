@@ -1,7 +1,8 @@
 name: Deploy to GitHub Pages
 
 on:
-  push:
+  pull_request:
+    types: [closed]
     branches: [main]
 
 permissions:
@@ -15,6 +16,8 @@ concurrency:
 
 jobs:
   deploy:
+    # Only run when the pull request was actually merged (not just closed without merging)
+    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -31,3 +34,4 @@ jobs:
           path: dist
       - id: deployment
         uses: actions/deploy-pages@v4
+
