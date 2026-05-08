@@ -14,7 +14,7 @@ Live launcher: https://anchal27sri.github.io/EarlySoarPhaserGames/
 | Tower of Hanoi 3D | [TowerOfHanoi3D/](TowerOfHanoi3D/) | Stack rings in 3D. |
 | Bouncing Ball ABC | [BouncingBall/](BouncingBall/) | Bounce a paddle to hit letter balls and learn A–Z. |
 
-Every game is a self-contained folder with its own `index.html`, `package.json`, and `vite.config.js`. The workspace root has its own `package.json` and `vite.config.js` that combine all games into a single production build for GitHub Pages.
+Every game is a self-contained folder with its own `index.html`, `package.json`, and `vite.config.js`. The workspace root has its own `package.json` and `vite.config.js` that combine all games into a single production build for GitHub Pages...
 
 ---
 
