@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="screen-orientation" content="landscape" />
+  <meta name="description" content="Subtraction Quest – a fun educational math game for kids aged 5–8. Learn subtraction by removing objects one by one!" />
+  <title>Subtraction Quest</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@700;800&display=swap" rel="stylesheet" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #8dc63f url('./src/assets/bg.png') no-repeat center center;
+      background-size: cover;
+      touch-action: none;
+      -webkit-tap-highlight-color: transparent;
+      font-family: 'Nunito', Arial, sans-serif;
+    }
+
+    /* Force landscape on mobile */
+    @media screen and (orientation: portrait) {
+      body::after {
+        content: '🔄 Please rotate your device for the best experience!';
+        position: fixed;
+        inset: 0;
+        background: #fff9f0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.3rem;
+        font-family: 'Nunito', Arial, sans-serif;
+        color: #302b63;
+        font-weight: 800;
+        text-align: center;
+        padding: 20px;
+        z-index: 99999;
+      }
+    }
+
+    #game-container {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    /* Scale canvas to fill viewport responsively */
+    #game-container canvas {
+      touch-action: none;
+    }
+
+    .home-btn {
+      position: fixed;
+      top: 8px;
+      left: 8px;
+      z-index: 9999;
+      background: rgba(0, 0, 0, 0.45);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 50%;
+      width: 38px;
+      height: 38px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      text-decoration: none;
+      font-size: 18px;
+      transition: background 0.2s;
+    }
+    .home-btn:hover { background: rgba(255, 255, 255, 0.2); }
+  </style>
+</head>
+<body>
+  <a class="home-btn" href="../index.html" title="Back to Home">🏠</a>
+  <div id="game-container"></div>
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
+

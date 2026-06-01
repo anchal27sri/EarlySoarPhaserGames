@@ -1,17 +1,17 @@
 {
-  "name": "earlysoar-games",
+  "name": "subtractionquest",
   "version": "1.0.0",
-  "description": "EarlySoar Games - Homepage for Phaser games",
+  "description": "Subtraction Quest - kids subtraction learning game",
+  "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview"
   },
   "dependencies": {
-    "phaser": "^4.0.0",
-    "three": "^0.160.0"
+    "phaser": "^4.0.0"
   },
   "devDependencies": {
-    "vite": "^8.0.14"
+    "vite": "^5.4.21"
   }
 }
