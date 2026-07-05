@@ -1,5 +1,5 @@
-export const GAME_W = 800;
-export const GAME_H = 450;
+export const GAME_W = 440;
+export const GAME_H = 956;
 export const TOTAL_ROUNDS = 10;
 
 // Color palette — matches root launcher & BouncingBall

@@ -13,7 +13,9 @@ const RP_X = 505, RP_W = 270, RP_CX = RP_X + RP_W / 2;   // right panel
 const PY   = 65;  // panels top-y
 const PH   = 345; // panels height
 
-import bgImg from '../assets/bg.png';
+import bgImg from '../assets/Counting1.png';
+import mascotWinImg from '../assets/image 226.png';
+import pauseBgImg from '../assets/Group 650.png';
 import spritesImg from '../assets/sprites_alpha.png';
 import spritesJsonUrl from '../assets/sprites.json?url';
 
@@ -22,6 +24,8 @@ export class MenuScene extends Scene {
 
   preload() {
     this.load.image('bg', bgImg);
+    this.load.image('mascot_win', mascotWinImg);
+    this.load.image('pause_bg', pauseBgImg);
     this.load.atlas('sprites', spritesImg, spritesJsonUrl);
   }
 
@@ -31,13 +35,14 @@ export class MenuScene extends Scene {
     bg.setDisplaySize(GAME_W, GAME_H);
 
     // Title
-    this.add.text(GAME_W / 2, GAME_H / 2 - 80, 'Subtraction Game', {
-      fontFamily: FONT_TITLE, fontSize: '56px', color: '#ffffff',
+    this.add.text(GAME_W / 2, GAME_H / 2 - 100, 'Subtraction\nQuest', {
+      fontFamily: FONT_TITLE, fontSize: '44px', color: '#ffffff',
       stroke: '#000000', strokeThickness: 6,
+      align: 'center'
     }).setOrigin(0.5).setDepth(10);
 
     // PLAY button (chunky orange 3D layered button)
-    const { g: btnG, label: btnL, btn } = chunkyButton(this, GAME_W / 2, GAME_H / 2 + 40, 240, 70, '▶  PLAY', 0xff7a2f, 0xcc5500, '32px');
+    const { g: btnG, label: btnL, btn } = chunkyButton(this, GAME_W / 2, GAME_H / 2 + 80, 220, 64, '▶  PLAY', 0xff7a2f, 0xcc5500, '28px');
 
     const go = () => {
       this.tweens.killAll();
