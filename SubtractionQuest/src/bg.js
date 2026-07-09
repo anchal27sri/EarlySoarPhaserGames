@@ -26,12 +26,12 @@ export function drawLandscapeBg(scene, opts = {}) {
     const r = 210 - i * 19;
     rbG.lineStyle(14, c, 0.24);
     rbG.beginPath();
-    rbG.arc(160, H + 18, r, Math.PI, 0, false);
+    rbG.arc(160, H - 90, r, Math.PI, 0, false);
     rbG.strokePath();
   });
 
   // ── 3. Sun (top-right, rotating rays) ────────────────────
-  const sx = W - 80, sy = 68;
+  const sx = W - 80, sy = 75;
   scene.add.circle(sx, sy, 52, 0xfff5a0, 0.38); // outer glow
   const raysG = scene.add.graphics({ x: sx, y: sy });
   raysG.lineStyle(3.5, 0xffd54f, 0.9);
@@ -49,10 +49,9 @@ export function drawLandscapeBg(scene, opts = {}) {
 
   // ── 4. Fluffy clouds (animated drift) ────────────────────
   [
-    { x: 70,  y: 55, s: 1.05, spd: 8000  },
-    { x: 295, y: 40, s: 1.20, spd: 12000 },
-    { x: 535, y: 60, s: 0.80, spd: 9500  },
-    { x: 695, y: 46, s: 0.90, spd: 11000 },
+    { x: 70,  y: 70, s: 1.05, spd: 8000  },
+    { x: 220, y: 50, s: 1.20, spd: 12000 },
+    { x: 350, y: 80, s: 0.80, spd: 9500  },
   ].forEach(({ x, y, s, spd }, i) => {
     const g = _cloud(scene, x, y, s);
     scene.tweens.add({ targets: g, x: x + 20, duration: spd, yoyo: true, repeat: -1, ease: 'Sine.easeInOut', delay: i * 1300 });
@@ -62,19 +61,19 @@ export function drawLandscapeBg(scene, opts = {}) {
   // ── 5. Far hills (lightest green) ────────────────────────
   const h1 = scene.add.graphics();
   h1.fillStyle(0xb8e080, 1);
-  [[60,335,330,136],[310,320,362,150],[572,330,342,140],[815,336,315,132]].forEach(([x,y,w,h]) => h1.fillEllipse(x,y,w,h));
+  [[40, H - 120, 220, 136], [180, H - 130, 240, 150], [320, H - 120, 220, 140], [420, H - 116, 200, 132]].forEach(([x,y,w,h]) => h1.fillEllipse(x,y,w,h));
 
   // ── 6. Near hills (richer green) ─────────────────────────
   const h2 = scene.add.graphics();
   h2.fillStyle(0x78cc40, 1);
-  [[-30,394,385,180],[225,378,432,188],[540,390,424,180],[835,395,385,178]].forEach(([x,y,w,h]) => h2.fillEllipse(x,y,w,h));
+  [[-20, H - 60, 240, 180], [130, H - 75, 270, 188], [310, H - 65, 260, 180], [450, H - 60, 240, 178]].forEach(([x,y,w,h]) => h2.fillEllipse(x,y,w,h));
 
   // ── 7. Ground strip ───────────────────────────────────────
   const gnd = scene.add.graphics();
   gnd.fillStyle(0x54b02a, 1);
-  gnd.fillRect(0, 406, W, 44);
+  gnd.fillRect(0, H - 44, W, 44);
   gnd.fillStyle(0x74cc42, 0.45);
-  gnd.fillRect(0, 406, W, 8); // grass highlight
+  gnd.fillRect(0, H - 44, W, 8); // grass highlight
 
   // ── Curving central path (sandy walkway from bottom center curving up/narrowing)
   const path = scene.add.graphics();
@@ -89,14 +88,14 @@ export function drawLandscapeBg(scene, opts = {}) {
     const t = i / steps;
     const mt = 1 - t;
     
-    // Left boundary: P0 = (W/2-90, H), P1 = (W/2-35, H-40), P2 = (W/2-25, 360)
-    const lx = mt * mt * (W / 2 - 90) + 2 * mt * t * (W / 2 - 35) + t * t * (W / 2 - 25);
-    const ly = mt * mt * H + 2 * mt * t * (H - 40) + t * t * 360;
+    // Left boundary
+    const lx = mt * mt * (W / 2 - 60) + 2 * mt * t * (W / 2 - 25) + t * t * (W / 2 - 15);
+    const ly = mt * mt * H + 2 * mt * t * (H - 40) + t * t * (H - 100);
     leftPoints.push({ x: lx, y: ly });
 
-    // Right boundary: P0 = (W/2+90, H), P1 = (W/2+35, H-40), P2 = (W/2+25, 360)
-    const rx = mt * mt * (W / 2 + 90) + 2 * mt * t * (W / 2 + 35) + t * t * (W / 2 + 25);
-    const ry = mt * mt * H + 2 * mt * t * (H - 40) + t * t * 360;
+    // Right boundary
+    const rx = mt * mt * (W / 2 + 60) + 2 * mt * t * (W / 2 + 25) + t * t * (W / 2 + 15);
+    const ry = mt * mt * H + 2 * mt * t * (H - 40) + t * t * (H - 100);
     rightPoints.push({ x: rx, y: ry });
   }
 
@@ -131,17 +130,17 @@ export function drawLandscapeBg(scene, opts = {}) {
 
   // ── 8. Trees at edges (won't be covered by game panels) ──
   const treeDefs = opts.trees ?? [
-    { x: 14,  y: 380, s: 0.65 },
-    { x: 46,  y: 372, s: 0.75 },
-    { x: 758, y: 380, s: 0.70 },
-    { x: 788, y: 374, s: 0.65 },
+    { x: 14,  y: H - 70, s: 0.65 },
+    { x: 40,  y: H - 78, s: 0.75 },
+    { x: W - 40, y: H - 70, s: 0.70 },
+    { x: W - 14, y: H - 76, s: 0.65 },
   ];
   treeDefs.forEach(({ x, y, s }) => _tree(scene, x, y, s));
 
   // ── 9. Ground flowers ─────────────────────────────────────
   const fCols = [0xff6b88, 0xffaa44, 0xffd700, 0xff88cc, 0x88eeff];
-  (opts.flowers ?? [34, 66, 733, 765]).forEach((fx, i) => {
-    const fy = 412 + (i % 2 ? 3 : 0);
+  (opts.flowers ?? [34, 66, W - 66, W - 34]).forEach((fx, i) => {
+    const fy = H - 38 + (i % 2 ? 3 : 0);
     scene.add.circle(fx, fy, 5, fCols[i % fCols.length]);
     scene.add.circle(fx, fy, 2.5, 0xffff99);
   });

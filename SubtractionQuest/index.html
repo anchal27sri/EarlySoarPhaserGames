@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="screen-orientation" content="landscape" />
+  <meta name="screen-orientation" content="portrait" />
   <meta name="description" content="Subtraction Quest – a fun educational math game for kids aged 5–8. Learn subtraction by removing objects one by one!" />
   <title>Subtraction Quest</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -18,17 +18,16 @@
       width: 100%;
       height: 100%;
       overflow: hidden;
-      background: #8dc63f url('./src/assets/bg.png') no-repeat center center;
-      background-size: cover;
+      background: #111111;
       touch-action: none;
       -webkit-tap-highlight-color: transparent;
       font-family: 'Nunito', Arial, sans-serif;
     }
 
-    /* Force landscape on mobile */
-    @media screen and (orientation: portrait) {
+    /* Force portrait on mobile */
+    @media screen and (orientation: landscape) {
       body::after {
-        content: '🔄 Please rotate your device for the best experience!';
+        content: '🔄 Please rotate your device to portrait for the best experience!';
         position: fixed;
         inset: 0;
         background: #fff9f0;
@@ -82,9 +81,7 @@
   </style>
 </head>
 <body>
-  <a class="home-btn" href="../index.html" title="Back to Home">🏠</a>
   <div id="game-container"></div>
   <script type="module" src="./src/main.js"></script>
 </body>
 </html>
-

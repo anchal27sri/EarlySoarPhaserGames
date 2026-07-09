@@ -1,263 +1,362 @@
 import { Scene, Math as PMath, Utils } from 'phaser';
 import {
   GAME_W, GAME_H, TOTAL_ROUNDS,
-  C_WHITE, C_GOLD, C_GREEN, C_ORANGE, C_PURPLE, C_TEAL,
+  C_GOLD, C_PURPLE,
   FONT_TITLE, FONT_BODY, FONT_NUMBERS,
-  C_TXT_D, C_TXT_M, C_PANEL_BD,
-  C_CRD_A, C_CRD_AS, C_CRD_B, C_CRD_BS, C_CRD_C, C_CRD_CS,
-  C_BTN_GRN, C_BTN_GRNS, C_BTN_OR, C_BTN_ORS, C_BTN_PUR, C_BTN_PURS, C_BTN_BLU, C_BTN_BLUS,
 } from '../constants.js';
-import { drawLandscapeBg, drawPanel, drawDashedRoundedRect, drawRibbonBanner, playClick, playSuccess, playWrong, playPop, getMuted, setMuted } from '../bg.js';
+import { drawDashedRoundedRect, playClick, playSuccess, playWrong, playPop, getMuted, setMuted, chunkyButton } from '../bg.js';
 
-// ─── Refined Layout Geometry (800 × 450) ────────────────────────────
-const LP_X   = 25,  LP_W = 460, LP_CX = LP_X + LP_W / 2;   // wider left panel
-const RP_X   = 505, RP_W = 270, RP_CX = RP_X + RP_W / 2;   // narrower right panel
-const P_Y    = 65;                                         // panels top Y
-const P_H    = 345;                                        // panels height
+// ─── Grid Layout ──────────────────────────────────────────────────────────────
+const CX        = GAME_W / 2;
+const COLS      = 4;
+const PAN_W     = 360;                                     // green panel fixed width
+const PAN_X     = (GAME_W - PAN_W) / 2;                   // 40px — centred
+const PAN_PAD   = 12;
+const CELL_GAP  = 8;       // gap between cells
+const GRID_W    = PAN_W - PAN_PAD * 2;                    // 336px inner grid area
+const CELL      = Math.floor((GRID_W - (COLS - 1) * CELL_GAP) / COLS); // 78px
+const GRID_X    = PAN_X + PAN_PAD;                        // 52px — left edge of grid
 
-// Object layout within left panel
-const Q_Y    = P_Y + 44;    // equation center
-const BOX_Y  = P_Y + 154;   // top starting objects center (+16px padding)
-const SUB_Y  = P_Y + 274;   // bottom subtraction zone objects center (+16px padding)
+// ─── Fixed Y positions ────────────────────────────────────────────────────────
+const HUD_CY    = 72;    // HUD bar centre (lowered to clear mobile status bar)
+const EQ_CY     = 155;   // equation pill centre
+const LBL1_CY   = 237;   // "Starting Objects" label centre
+const GRID_TOP  = 237;   // perfectly centered with label
 
-// Right panel choice cards
-const CARD_W = RP_W - 32;
-const CARD_H = 70;
-const CARD_X = RP_CX;
-const CARD_Y = [P_Y + 92, P_Y + 176, P_Y + 260];  // 3 card centers
+// ─── Answer button layout (2 × 2 grid) ───────────────────────────────────────
+const BTN_GAP   = 12;
+const BTN_W     = (GRID_W - BTN_GAP) / 2;   // ~182px
+const BTN_H     = 72;
 
-// Card specs
-const CARD_SPECS = [
-  { main: C_CRD_A, shadow: C_CRD_AS, highlight: 0xff99bb, textColor: '#e91e63' },
-  { main: C_CRD_B, shadow: C_CRD_BS, highlight: 0x80d8ff, textColor: '#0288d1' },
-  { main: C_CRD_C, shadow: C_CRD_CS, highlight: 0xb0e8b0, textColor: '#388e3c' },
-];
+// Blue, Green, Orange, Purple — matching screenshot colours
+const BTN_COLORS  = [0x4890EB, 0x6ED266, 0xFBA331, 0x9B6AEC];
+const BTN_SHADOWS = [0x2478b8, 0x3a9010, 0xcc5500, 0x5e177d];
 
+// ─── Themes ───────────────────────────────────────────────────────────────────
 const THEMES = [
-  { frame: 'sprite_0', bg: 0xf0faf0, name: 'butterfly' },
-  { frame: 'sprite_24', bg: 0xfce4ec, name: 'apple' },
-  { frame: 'sprite_26', bg: 0xfffde7, name: 'banana' },
-  { frame: 'sprite_32', bg: 0xf9fbe7, name: 'bunny' },
-  { frame: 'sprite_6', bg: 0xfff3e0, name: 'cookie' },
-  { frame: 'sprite_20', bg: 0xfff3e0, name: 'cupcake' },
-  { frame: 'sprite_27', bg: 0xfce4ec, name: 'strawberry' },
-  { frame: 'sprite_29', bg: 0xf0e0d0, name: 'fox' },
-  { frame: 'sprite_10', bg: 0xe3f2fd, name: 'candy' },
-  { frame: 'sprite_15', bg: 0xfff8e1, name: 'popsicle' },
+  { frame: 'sprite_0',  name: 'butterfly'  },
+  { frame: 'sprite_24', name: 'apple'      },
+  { frame: 'sprite_26', name: 'banana'     },
+  { frame: 'sprite_32', name: 'bunny'      },
+  { frame: 'sprite_6',  name: 'cookie'     },
+  { frame: 'sprite_20', name: 'cupcake'    },
+  { frame: 'sprite_27', name: 'strawberry' },
+  { frame: 'sprite_29', name: 'fox'        },
+  { frame: 'sprite_10', name: 'candy'      },
+  { frame: 'sprite_15', name: 'popsicle'   },
 ];
 
-const CORRECT_PHRASES = ['⭐ Great Job!','🎉 Awesome!','✨ You got it!','🌟 Brilliant!','🎊 Perfect!','👏 Well done!'];
-const WRONG_PHRASES   = ['🤔 Try again!','💪 Almost!','🧠 Think again…','🙂 So close!','👆 One more try!'];
-
-// ─────────────────────────────────────────────────────────────
-//  Choice Shuffling
-// ─────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 function buildAnswerChoices(correct) {
-  const pool = []; for (let v=1;v<=10;v++) if(v!==correct) pool.push(v);
-  Utils.Array.Shuffle(pool);
-  return Utils.Array.Shuffle([correct, ...pool.slice(0,2)]);
+  const pool = new Set();
+  while (pool.size < 3) {
+    const v = PMath.Between(1, 16);
+    if (v !== correct) pool.add(v);
+  }
+  return Utils.Array.Shuffle([correct, ...pool]);
 }
 
-// ─────────────────────────────────────────────────────────────
-//  GameScene
-// ─────────────────────────────────────────────────────────────
+const TOP_PAD = 32;
+function gridCellCX(col)           { return GRID_X + col * (CELL + CELL_GAP) + CELL / 2; }
+function gridCellCY(row, panTopY)  { return panTopY + TOP_PAD + row * (CELL + CELL_GAP) + CELL / 2; }
+function panelHeight(count)        { const r = Math.ceil(count / COLS); return r * CELL + (r - 1) * CELL_GAP + TOP_PAD + PAN_PAD; }
+
+// ─── Sub-grid (Tap to remove) — smaller cells ──────────────────────────
+const SUB_PAN_W  = 330;
+const SUB_PAN_X  = (GAME_W - SUB_PAN_W) / 2;                                        // 55px
+const SUB_CELL   = Math.floor((SUB_PAN_W - PAN_PAD * 2 - (COLS - 1) * CELL_GAP) / COLS); // 70px
+const SUB_GRID_X = SUB_PAN_X + PAN_PAD;                                             // 67px
+function subCellCX(col)       { return SUB_GRID_X + col * (SUB_CELL + CELL_GAP) + SUB_CELL / 2; }
+function subCellCY(row, topY) { return topY + TOP_PAD + row * (SUB_CELL + CELL_GAP) + SUB_CELL / 2; }
+function subPanelHeight(count){ const r = Math.ceil(count / COLS); return r * SUB_CELL + (r - 1) * CELL_GAP + TOP_PAD + PAN_PAD; }
+
+// ─── GameScene ────────────────────────────────────────────────────────────────
 export class GameScene extends Scene {
   constructor() { super({ key: 'GameScene' }); }
 
   init() {
-    this.round         = 0;
-    this.score         = 0;
-    this.stars         = 0;
-    this.currentProblem= null;
-    this.removedCount  = 0;
-    this.roundComplete = false;
-    this.answerLocked  = false;
-    this.wrongAttempts = 0;
-    this.boxObjects    = [];
-    this.subObjects    = [];
-    this.subBgCircles  = [];
-    this.answerCards   = [];
-    this.lockedCards   = [];
-    this.equationGroup = [];
+    this.round          = 0;
+    this.score          = 0;
+    this.stars          = 0;
+    this.currentProblem = null;
+    this.removedCount   = 0;
+    this.step           = 1;
+    this.answerLocked   = false;
+    this.wrongAttempts  = 0;
+
+    // Object groups for lifecycle management
+    this.equationGroup  = [];   // equation pill objects
+    this.mainGridGroup  = [];   // green panel + tile cards (persists step1→2)
+    this.mainGridTiles  = [];   // { g, sp, removed, cx, cy }
+    this.subGroup       = [];   // step-1 only: labels + sub-grid
+    this.step2Group     = [];   // step-2 only: remaining label + highlights + buttons
+
+    this.mainPanBottomY = 0;    // computed dynamically per round
   }
 
+  // ── create ─────────────────────────────────────────────────────────────────
   create() {
-    // 1. Background image
-    const bg = this.add.image(GAME_W / 2, GAME_H / 2, 'bg');
-    bg.setDisplaySize(GAME_W, GAME_H);
-
-    // Dynamic graphics layers
-    this.hudGraphics = this.add.graphics().setDepth(20);
-    this.panelGraphics = this.add.graphics().setDepth(3);
-
-    // 2. Floating capsules HUD
+    this.add.image(GAME_W / 2, GAME_H / 2, 'bg').setDisplaySize(GAME_W, GAME_H);
     this._buildHUD();
-
-    // 3. Panels Redesign
-    drawPanel(this, LP_X, P_Y, LP_W, P_H, { radius: 24 });
-    drawPanel(this, RP_X, P_Y, RP_W, P_H, { radius: 24 });
-
-    this._buildLeftStructure();
-    this._buildRightStructure();
-    this._buildBottomControls();
-
-    // 4. Start first round
     this._nextRound();
   }
 
-  // ─────────────────────────────────────────────────────────────
-  //  Floating Capsules HUD Redesign
-  // ─────────────────────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  HUD — Back · Star/Round pill · Sound · Pause
+  // ═══════════════════════════════════════════════════════════════════════════
   _buildHUD() {
-    this.hudGroup = this.add.group();
-    
-    // Glossy pill background
-    const bg = this.add.graphics().setDepth(20);
-    const w = 175, h = 46, x = GAME_W / 2 - w / 2, y = 14;
-    
-    // Shadow
-    bg.fillStyle(0x000000, 0.15);
-    bg.fillRoundedRect(x + 3, y + 5, w, h, 23);
-    // Main Body
-    bg.fillStyle(0xfffdf6, 1);
-    bg.fillRoundedRect(x, y, w, h, 23);
-    // Top highlight
-    bg.fillStyle(0xffffff, 0.8);
-    bg.fillRoundedRect(x + 4, y + 2, w - 8, h * 0.4, 12);
-    // Border
-    bg.lineStyle(3.5, 0xfab82c, 1);
-    bg.strokeRoundedRect(x, y, w, h, 23);
+    const y = HUD_CY;
 
-    // Star icon from sprite sheet (pop out effect on the left)
-    const starIcon = this.add.sprite(x + 18, y + 23, 'sprites', 'sprite_33')
-      .setScale(0.38).setDepth(22).setAngle(-5);
-      
-    // Stars Text
-    this.starsText = this.add.text(x + 44, y + 22, '0', {
-      fontFamily: FONT_NUMBERS, fontSize: '26px', color: '#ffaa00',
-      stroke: '#ffffff', strokeThickness: 5
-    }).setOrigin(0, 0.5).setDepth(21);
+    // ── Back button ────────────────────────────────────────────────────────
+    const bkG = this.add.graphics().setDepth(25);
+    // Drop shadow
+    bkG.fillStyle(0x652ADE, 0.25); bkG.fillCircle(44, y + 0.5, 25);
+    // Button body
+    bkG.fillStyle(0xffffff, 1);    bkG.fillCircle(44, y, 25);
+    this.add.text(41, y + 1, '❮', {
+      fontFamily: FONT_NUMBERS, fontSize: '22px', color: '#6438DB',
+    }).setOrigin(0.5).setDepth(26);
+    const bkHit = this.add.circle(44, y, 25, 0, 0)
+      .setInteractive({ useHandCursor: true }).setDepth(27);
+    bkHit.on('pointerover',  () => bkG.setAlpha(0.85));
+    bkHit.on('pointerout',   () => bkG.setAlpha(1));
+    bkHit.on('pointerdown',  () => {
+      playClick();
+      this.cameras.main.flash(150, 255, 255, 255);
+      this.time.delayedCall(120, () => this.scene.start('MenuScene'));
+    });
+
+    // ── Centre pill — stars + round ────────────────────────────────────────
+    const pW = 195, pH = 65, pX = 88; // shifted left to make 19px gap with buttons
+    const pG = this.add.graphics().setDepth(25);
+    pG.fillStyle(0xffffff, 1);    pG.fillRoundedRect(pX, y - pH/2, pW, pH, 16);
+    pG.lineStyle(1, 0xfcfdfe, 1); pG.strokeRoundedRect(pX, y - pH/2, pW, pH, 16);
+
+    // Star icon + count
+    this.add.sprite(pX + 24, y - 8, 'sprites', 'sprite_33').setScale(0.28).setDepth(26);
+    this.starsText = this.add.text(pX + 44, y - 10, '0', {
+      fontFamily: FONT_BODY, fontSize: '24px', color: '#000000', fontStyle: '600',
+    }).setOrigin(0, 0.5).setDepth(26);
+    this.add.text(pX + 44, y + 12, 'Total Stars', {
+      fontFamily: FONT_BODY, fontSize: '12px', color: '#000000', fontStyle: '500',
+    }).setOrigin(0, 0.5).setDepth(26);
 
     // Divider
-    bg.lineStyle(2.5, 0xe0e0e0, 1);
-    bg.beginPath();
-    bg.moveTo(x + w / 2 + 5, y + 10);
-    bg.lineTo(x + w / 2 + 5, y + h - 10);
-    bg.strokePath();
+    pG.lineStyle(1.5, 0xdddddd, 1);
+    pG.beginPath();
+    pG.moveTo(pX + pW / 2, y - 18); pG.lineTo(pX + pW / 2, y + 18);
+    pG.strokePath();
 
-    // Round Text
-    this.roundText = this.add.text(x + w - 18, y + 23, `1/${TOTAL_ROUNDS}`, {
-      fontFamily: FONT_BODY, fontSize: '18px', color: '#6ebb47', fontStyle: 'bold'
-    }).setOrigin(1, 0.5).setDepth(21);
+    // Round number
+    this.roundNumText = this.add.text(pX + pW / 2 + 16, y - 10, '1', {
+      fontFamily: FONT_BODY, fontSize: '24px', color: '#ff7834', fontStyle: '600',
+    }).setOrigin(0, 0.5).setDepth(26);
+    this.add.text(pX + pW / 2 + 16, y + 12, `/${TOTAL_ROUNDS} ROUNDS`, {
+      fontFamily: FONT_BODY, fontSize: '12px', color: '#000000', fontStyle: '500',
+    }).setOrigin(0, 0.5).setDepth(26);
 
-    this.hudContainer = [bg, starIcon, this.starsText, this.roundText];
+    // ── Sound button ───────────────────────────────────────────────────────
+    const sX = 327; // shifted left to make 19px gap with pause button
+    const sG = this.add.graphics().setDepth(25);
+    const drawSnd = () => {
+      sG.clear();
+      // Drop shadow (Y:4, Blur:4 approx)
+      sG.fillStyle(0x000000, 0.15); sG.fillCircle(sX, y + 2, 26);
+      sG.fillStyle(0x000000, 0.15); sG.fillCircle(sX, y + 4, 25);
+      // Button body
+      sG.fillStyle(0x6E40D9, 1); sG.fillCircle(sX, y, 25);
+      // Stroke
+      sG.lineStyle(1, 0xffffff, 1); sG.strokeCircle(sX, y, 25);
+    };
+    drawSnd();
+    this.sndEmoji = this.add.text(sX, y, getMuted() ? '🔇' : '🔊', { 
+      fontSize: '20px', color: '#ffffff' 
+    }).setOrigin(0.5).setDepth(26);
+    this.sndEmoji.setTintFill(0xffffff); // Force white silhouette
+    const sH = this.add.circle(sX, y, 25, 0, 0).setInteractive({ useHandCursor: true }).setDepth(27);
+    sH.on('pointerdown', () => { setMuted(!getMuted()); this.sndEmoji.setText(getMuted() ? '🔇' : '🔊'); drawSnd(); playClick(); });
+    sH.on('pointerover', () => sG.setAlpha(0.85)); sH.on('pointerout', () => sG.setAlpha(1));
+
+    // ── Pause button ───────────────────────────────────────────────────────
+    const ppX = GAME_W - 44;
+    const ppG = this.add.graphics().setDepth(25);
+    // Drop shadow
+    ppG.fillStyle(0x652ADE, 0.25); ppG.fillCircle(ppX, y + 0.5, 25);
+    // Button body
+    ppG.fillStyle(0xffffff, 1);    ppG.fillCircle(ppX, y, 25);
+    this.add.text(ppX, y, '⏸', {
+      fontSize: '20px', color: '#6438DB'
+    }).setOrigin(0.5).setDepth(26);
+
+    const ppHit = this.add.circle(ppX, y, 25, 0, 0).setInteractive({ useHandCursor: true }).setDepth(27);
+    ppHit.on('pointerdown', () => {
+      playClick();
+      this._showPauseMenu();
+    });
+    ppHit.on('pointerover', () => ppG.setAlpha(0.85));
+    ppHit.on('pointerout', () => ppG.setAlpha(1));
   }
 
   _updateHUD() {
-    if (!this.starsText) return;
-    this.starsText.setText(`${this.stars}`);
-    this.roundText.setText(`${Math.min(this.round, TOTAL_ROUNDS)}/${TOTAL_ROUNDS}`);
+    this.starsText?.setText(`${this.stars}`);
+    this.roundNumText?.setText(`${Math.min(this.round, TOTAL_ROUNDS)}`);
+  }
+
+  _showPauseMenu() {
+    if (this.isPaused) return;
+    this.isPaused = true;
+
+    this.pauseGroup = this.add.group();
+
+    const overlay = this.add.rectangle(GAME_W / 2, GAME_H / 2, GAME_W, GAME_H, 0x000000, 0.4)
+      .setInteractive()
+      .setDepth(100);
+    this.pauseGroup.add(overlay);
+
+    const cx = GAME_W / 2, cy = GAME_H / 2;
+    const panel = this.add.container(cx, cy).setDepth(101);
+    this.pauseGroup.add(panel);
+
+    const px = 0, py = 0; // Coordinates relative to container
+    const btnW = 141, btnH = 50;
+
+    const pauseBg = this.add.image(0, 0, 'pause_bg').setDepth(102);
     
-    // Subtle bounce on update (only if we've already scored)
-    if (this.score > 0) {
-      this.tweens.add({
-        targets: this.hudContainer,
-        y: '-=4',
-        duration: 100,
-        yoyo: true,
-        ease: 'Sine.easeInOut'
-      });
+    // Dynamic height calculations to "hug" contents
+    const padding = 35; // space above image and below buttons
+    const gap = 15;     // space between image and buttons
+    const ph = pauseBg.height + gap + btnH + padding * 2;
+    const pw = 420; 
+    
+    const cardTopY = py - ph / 2;
+    
+    const bgG = this.add.graphics();
+    bgG.fillStyle(0xECE0FC, 1);
+    bgG.fillRoundedRect(px - pw / 2, cardTopY, pw, ph, 30);
+    panel.add(bgG);
+
+    // Position image (centered horizontally, padded from top)
+    pauseBg.setPosition(px, cardTopY + padding + pauseBg.height / 2);
+    panel.add(pauseBg);
+
+    // I will keep the interactive buttons, assuming they are placed on top or the image doesn't have them
+    
+    // Resume Button (Custom Figma Styling)
+    const resCX = px - 90, resCY = pauseBg.y + pauseBg.height / 2 + gap + btnH / 2;
+    const resR = 25; // 32 in Figma, caps at height/2
+    const shadowG = this.add.graphics();
+    // Soft drop shadow
+    shadowG.fillStyle(0x000000, 0.08);
+    shadowG.fillRoundedRect(resCX - btnW / 2 + 1, resCY - btnH / 2 + 3, btnW, btnH, resR);
+    shadowG.fillStyle(0x000000, 0.06);
+    shadowG.fillRoundedRect(resCX - btnW / 2, resCY - btnH / 2 + 6, btnW, btnH, resR);
+    shadowG.fillStyle(0x000000, 0.04);
+    shadowG.fillRoundedRect(resCX - btnW / 2, resCY - btnH / 2 + 9, btnW, btnH, resR);
+    shadowG.setDepth(102);
+    
+    // Generate linear gradient rounded rect texture using Canvas API
+    const texKey = 'resume_btn_grad';
+    if (!this.textures.exists(texKey)) {
+      const canvas = document.createElement('canvas');
+      canvas.width = btnW;
+      canvas.height = btnH;
+      const ctx = canvas.getContext('2d');
+      const grd = ctx.createLinearGradient(0, 0, 0, btnH);
+      grd.addColorStop(0, '#8757E2');
+      grd.addColorStop(1, '#4A307C');
+      ctx.fillStyle = grd;
+      
+      if (ctx.roundRect) {
+         ctx.beginPath(); ctx.roundRect(0, 0, btnW, btnH, resR); ctx.fill();
+      } else {
+         ctx.beginPath(); ctx.moveTo(resR, 0); ctx.lineTo(btnW - resR, 0);
+         ctx.arcTo(btnW, 0, btnW, resR, resR); ctx.lineTo(btnW, btnH - resR);
+         ctx.arcTo(btnW, btnH, btnW - resR, btnH, resR); ctx.lineTo(resR, btnH);
+         ctx.arcTo(0, btnH, 0, btnH - resR, resR); ctx.lineTo(0, resR);
+         ctx.arcTo(0, 0, resR, 0, resR); ctx.closePath(); ctx.fill();
+      }
+      this.textures.addCanvas(texKey, canvas);
     }
-  }
+    
+    const gradImg = this.add.image(resCX, resCY, texKey).setDepth(102);
 
-  // ─────────────────────────────────────────────────────────────
-  //  Left Panel Setup
-  // ─────────────────────────────────────────────────────────────
-  _buildLeftStructure() {
-    // Top corners leaf illustrations
-    this.add.text(LP_X + 28, P_Y + 28, '🍃', { fontSize: '20px' }).setOrigin(0.5).setDepth(4).setAngle(-20);
-    this.add.text(LP_X + LP_W - 28, P_Y + 28, '🍃', { fontSize: '20px' }).setOrigin(0.5).setDepth(4).setAngle(20);
+    // Stroke overlay 
+    const strokeG = this.add.graphics();
+    strokeG.lineStyle(1.5, 0xB493F3, 1);
+    strokeG.strokeRoundedRect(resCX - btnW / 2, resCY - btnH / 2, btnW, btnH, resR);
+    strokeG.setDepth(102);
+    
+    const resBtn = this.add.rectangle(resCX, resCY, btnW, btnH, 0, 0)
+      .setInteractive({ useHandCursor: true });
+      
+    const resL = this.add.text(resCX, resCY, '▶  Resume', {
+      fontFamily: 'Poppins, sans-serif', fontSize: '16px', color: '#ffffff', fontStyle: '600'
+    }).setOrigin(0.5);
 
-    // Static graphics layout
-    const boxW = LP_W - 32;
-    // Starting Objects container (cream with golden dashed border)
-    this.panelGraphics.fillStyle(0xfffdf6, 1);
-    this.panelGraphics.fillRoundedRect(LP_X + 16, P_Y + 90, boxW, 100, 16);
-    drawDashedRoundedRect(this.panelGraphics, LP_X + 16, P_Y + 90, boxW, 100, 16, 0xfab82c, 2.5, 6, 4);
+    resL.setDepth(103); resBtn.setDepth(104);
+    panel.add([shadowG, gradImg, strokeG, resL, resBtn]);
 
-    // Starting Objects orange banner
-    drawRibbonBanner(this.panelGraphics, LP_CX, P_Y + 90, 150, 24, C_BTN_OR, C_BTN_ORS);
-    this.add.text(LP_CX, P_Y + 89, 'Starting Objects', {
-      fontFamily: FONT_BODY, fontSize: '11.5px', color: '#ffffff', fontStyle: 'bold',
-    }).setOrigin(0.5).setDepth(10);
-
-    // Subtraction container (cream green with green dashed border)
-    this.panelGraphics.fillStyle(0xf3faf0, 1);
-    this.panelGraphics.fillRoundedRect(LP_X + 16, P_Y + 222, boxW, 100, 16);
-    drawDashedRoundedRect(this.panelGraphics, LP_X + 16, P_Y + 222, boxW, 100, 16, 0x88cc44, 2.5, 6, 4);
-
-    // Subtraction zone green banner
-    this.subRibbonGraphics = this.add.graphics().setDepth(9);
-  }
-
-  // ─────────────────────────────────────────────────────────────
-  //  Right Panel Setup
-  // ─────────────────────────────────────────────────────────────
-  _buildRightStructure() {
-    // Top purple header ribbon banner
-    drawRibbonBanner(this.panelGraphics, RP_CX, P_Y + 22, RP_W - 32, 32, C_PURPLE, C_BTN_PURS);
-    this.add.text(RP_CX, P_Y + 21, 'How many are left?', {
-      fontFamily: FONT_TITLE, fontSize: '13.5px', color: '#ffffff',
-    }).setOrigin(0.5).setDepth(10);
-
-    // Decorative small leaf emojis on the ribbon corners
-    this.add.text(RP_CX - 78, P_Y + 21, '🍃', { fontSize: '13px' }).setOrigin(0.5).setDepth(11);
-    this.add.text(RP_CX + 78, P_Y + 21, '🍃', { fontSize: '13px' }).setOrigin(0.5).setDepth(11);
-  }
-
-  // ─────────────────────────────────────────────────────────────
-  //  Bottom floating controls
-  // ─────────────────────────────────────────────────────────────
-  _buildBottomControls() {
-    // ── Bottom Left: Sound Toggle Button ──
-    const sBg = this.add.graphics().setDepth(20);
-    const drawSoundBtn = () => {
-      sBg.clear();
-      sBg.fillStyle(0x5e177d, 1);
-      sBg.fillCircle(35, GAME_H - 32, 20);
-      sBg.fillStyle(C_PURPLE, 1);
-      sBg.fillCircle(35, GAME_H - 35, 20);
-      sBg.lineStyle(3, 0xffffff, 1);
-      sBg.strokeCircle(35, GAME_H - 35, 20);
-    };
-    drawSoundBtn();
-
-    this.soundEmoji = this.add.text(35, GAME_H - 36, getMuted() ? '🔇' : '🔊', { fontSize: '17px' })
-      .setOrigin(0.5).setDepth(21);
-
-    const sHit = this.add.circle(35, GAME_H - 35, 22, 0, 0)
-      .setInteractive({ useHandCursor: true }).setDepth(22);
-
-    sHit.on('pointerover', () => sBg.setAlpha(0.9));
-    sHit.on('pointerout',  () => sBg.setAlpha(1));
-    sHit.on('pointerdown', () => {
-      setMuted(!getMuted());
-      this.soundEmoji.setText(getMuted() ? '🔇' : '🔊');
-      drawSoundBtn();
+    resBtn.on('pointerdown', () => {
       playClick();
+      this.pauseGroup.destroy(true);
+      this.isPaused = false;
     });
+    resBtn.on('pointerover', () => { gradImg.setAlpha(0.85); strokeG.setAlpha(0.85); });
+    resBtn.on('pointerout', () => { gradImg.setAlpha(1); strokeG.setAlpha(1); });
 
+    // Home Button
+    const homeCX = px + 90, homeCY = resCY;
+    const homeG = this.add.graphics();
+    homeG.fillStyle(0xFFFFFF, 1);
+    homeG.fillRoundedRect(homeCX - btnW / 2, homeCY - btnH / 2, btnW, btnH, resR);
+    homeG.lineStyle(1, 0x8052D6, 1);
+    homeG.strokeRoundedRect(homeCX - btnW / 2, homeCY - btnH / 2, btnW, btnH, resR);
 
+    // Draw solid purple house icon
+    const hx = homeCX - 32, hy = homeCY + 1; // offset to left of text
+    homeG.fillStyle(0x8052D6, 1);
+    // Base
+    homeG.fillRect(hx - 7, hy - 3, 14, 11);
+    // Roof triangle
+    homeG.fillTriangle(hx - 10, hy - 3, hx, hy - 11, hx + 10, hy - 3);
+    homeG.setDepth(102);
+
+    const homeBtn = this.add.rectangle(homeCX, homeCY, btnW, btnH, 0, 0)
+      .setInteractive({ useHandCursor: true });
+      
+    const homeL = this.add.text(homeCX + 14, homeCY, 'Home', {
+      fontFamily: 'Poppins, sans-serif', fontSize: '16px', color: '#8052D6', fontStyle: '600'
+    }).setOrigin(0.5);
+    
+    homeL.setDepth(103); homeBtn.setDepth(104);
+    panel.add([homeG, homeL, homeBtn]);
+
+    homeBtn.on('pointerdown', () => {
+      playClick();
+      this.cameras.main.flash(150, 255, 255, 255);
+      this.time.delayedCall(120, () => this.scene.start('MenuScene'));
+    });
+    homeBtn.on('pointerover', () => { homeG.setAlpha(0.85); });
+    homeBtn.on('pointerout', () => { homeG.setAlpha(1); });
+
+    // Pop-in animation
+    panel.setScale(0);
+    this.tweens.add({
+      targets: panel,
+      scaleX: 1,
+      scaleY: 1,
+      duration: 350,
+      ease: 'Back.out(1.5)'
+    });
   }
 
-
-
-  // ─────────────────────────────────────────────────────────────
-  //  Round Lifecycle
-  // ─────────────────────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  Round lifecycle
+  // ═══════════════════════════════════════════════════════════════════════════
   _generateProblem() {
-    const total = PMath.Between(2, 10);
-    const subtract = PMath.Between(1, total - 1);
+    const total    = PMath.Between(2, 16);
+    const maxSub   = Math.min(total - 1, 12);
+    const subtract = PMath.Between(1, maxSub);
     return { total, subtract, answer: total - subtract };
   }
 
@@ -266,428 +365,386 @@ export class GameScene extends Scene {
     if (this.round > TOTAL_ROUNDS) { this._goToWin(); return; }
 
     this.removedCount  = 0;
-    this.roundComplete = false;
+    this.step          = 1;
     this.answerLocked  = false;
     this.wrongAttempts = 0;
-
     this.currentProblem = this._generateProblem();
     const theme = THEMES[(this.round - 1) % THEMES.length];
 
     this._updateHUD();
+    this._clearAll();
+    this._buildEquation();
+    this._buildStep1(theme);
+  }
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  Equation pill
+  // ═══════════════════════════════════════════════════════════════════════════
+  _buildEquation() {
     const { total, subtract } = this.currentProblem;
 
-    // Draw Equation with a Purple dashed box around "?"
-    this._clearEquation();
-    this._buildEquationElements();
+    // Create text first so we can measure rendered widths for the pill
+    const ns = { fontFamily: FONT_NUMBERS, fontSize: '36px', color: '#000000' };
+    const t1 = this.add.text(CX - 88, EQ_CY, `${total}`,    ns).setOrigin(0.5).setDepth(10);
+    const t2 = this.add.text(CX - 44, EQ_CY, '−',           ns).setOrigin(0.5).setDepth(10);
+    const t3 = this.add.text(CX,      EQ_CY, `${subtract}`, ns).setOrigin(0.5).setDepth(10);
+    const t4 = this.add.text(CX + 44, EQ_CY, '=',           ns).setOrigin(0.5).setDepth(10);
 
-    // Redraw subtitle green banner inside subtraction container dynamically
-    this.subRibbonGraphics.clear();
-    drawRibbonBanner(this.subRibbonGraphics, LP_CX, P_Y + 222, 260, 24, 0x6ebb47, 0x3d7a22);
-
-    if (this.subRibbonText) this.subRibbonText.destroy();
-    this.subRibbonText = this.add.text(LP_CX, P_Y + 221, `Tap each ${theme.name} to remove it  👆`, {
-      fontFamily: FONT_BODY, fontSize: '11.5px', color: '#ffffff', fontStyle: 'bold',
+    // Question box
+    const qBX = CX + 92, qBS = 46;
+    const qG  = this.add.graphics().setDepth(9);
+    drawDashedRoundedRect(qG, qBX - qBS/2, EQ_CY - qBS/2, qBS, qBS, 11, 0x6E40D9, 2.5, 5, 3);
+    const qT  = this.add.text(qBX, EQ_CY, '?', {
+      fontFamily: FONT_NUMBERS, fontSize: '28px', color: '#000000',
     }).setOrigin(0.5).setDepth(10);
 
-    // Objects spawning
-    this._clearObjects();
-    this._buildBoxObjects(theme);
-    this._buildSubtractionObjects(theme);
+    // Pill hugs content — measure leftmost text edge and rightmost box edge, add 12px padding
+    const PAD       = 12;
+    const leftEdge  = t1.x - t1.width / 2;
+    const rightEdge = qBX + qBS / 2;
+    const pH        = 68;
+    const pX        = leftEdge - PAD;
+    const pW        = (rightEdge - leftEdge) + PAD * 2;
+    const pY        = EQ_CY - pH / 2;
 
-    // Spawning locked choices "?" cards
-    this._clearAnswerCards();
-    this._clearLockedCards();
-    this._buildLockedCards();
+    const g = this.add.graphics().setDepth(8);
+    // Subtle drop shadow
+    g.fillStyle(0x000000, 0.1);  g.fillRoundedRect(pX + 3, pY + 5, pW, pH, 16);
+    // Fill #65D570
+    g.fillStyle(0x65D570, 1);    g.fillRoundedRect(pX, pY, pW, pH, 16);
+    // White border weight 3
+    g.lineStyle(3, 0xffffff, 1); g.strokeRoundedRect(pX, pY, pW, pH, 16);
+
+    this.tweens.add({ targets: [t1, t2, t3, t4, qG, qT], scale: 1.06, duration: 150, yoyo: true, ease: 'Back.easeOut' });
+    this.equationGroup.push(g, t1, t2, t3, t4, qG, qT);
   }
 
-  // ─────────────────────────────────────────────────────────────
-  //  Equation construction with Purple Dashed Question box
-  // ─────────────────────────────────────────────────────────────
-  _buildEquationElements() {
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  Step 1 — Starting Objects grid + Tap-to-remove sub-grid
+  // ═══════════════════════════════════════════════════════════════════════════
+  _buildStep1(theme) {
     const { total, subtract } = this.currentProblem;
-    
-    // Draw numbers side by side centered at LP_CX
-    const fontSize = '36px';
-    const textStyle = {
-      fontFamily: FONT_NUMBERS, fontSize, color: '#4a2808',
-      stroke: '#ffffff', strokeThickness: 5
-    };
 
-    // Calculate dynamic spacings
-    const tNum = this.add.text(LP_CX - 76, Q_Y, `${total}`, textStyle).setOrigin(0.5).setDepth(10);
-    const tMinus = this.add.text(LP_CX - 36, Q_Y, '−', textStyle).setOrigin(0.5).setDepth(10);
-    const tSub = this.add.text(LP_CX + 4, Q_Y, `${subtract}`, textStyle).setOrigin(0.5).setDepth(10);
-    const tEqual = this.add.text(LP_CX + 44, Q_Y, '=', textStyle).setOrigin(0.5).setDepth(10);
+    // "Starting Objects" label
+    this._makeLabel('Starting Objects', LBL1_CY, this.subGroup);
 
-    // Dashed purple box
-    const boxSize = 42;
-    const boxX = LP_CX + 86;
-    const qBox = this.add.graphics({ x: boxX, y: Q_Y }).setDepth(9);
-    drawDashedRoundedRect(qBox, -boxSize/2, -boxSize/2, boxSize, boxSize, 10, 0x9c27b0, 2.5, 5, 3);
+    // ── Main green grid panel ──────────────────────────────────────────────
+    const panH = panelHeight(total);
+    this.mainPanBottomY = GRID_TOP + panH;
 
-    // Purple "?" inside the box
-    const qMark = this.add.text(boxX, Q_Y, '?', {
-      fontFamily: FONT_NUMBERS, fontSize: '26px', color: '#9c27b0',
-    }).setOrigin(0.5).setDepth(10);
+    const panG = this.add.graphics().setDepth(5);
+    panG.fillStyle(0x000000, 0.1);  panG.fillRoundedRect(PAN_X + 3, GRID_TOP + 5, PAN_W, panH, 24);
+    panG.fillStyle(0x65D570, 1);    panG.fillRoundedRect(PAN_X, GRID_TOP, PAN_W, panH, 24);
+    panG.lineStyle(4, 0xffffff, 1); panG.strokeRoundedRect(PAN_X, GRID_TOP, PAN_W, panH, 24);
+    this.mainGridGroup.push(panG);
 
-    this.tweens.add({ targets: [tNum, tMinus, tSub, tEqual, qBox, qMark], scale: 1.1, duration: 180, yoyo: true, ease: 'Back.easeOut' });
-
-    this.equationGroup.push(tNum, tMinus, tSub, tEqual, qBox, qMark);
-  }
-
-  _clearEquation() {
-    this.equationGroup.forEach(obj => {
-      if (obj.destroy) obj.destroy();
-    });
-    this.equationGroup = [];
-  }
-
-  // ─────────────────────────────────────────────────────────────
-  //  Locked choices placeholders setup
-  // ─────────────────────────────────────────────────────────────
-  _buildLockedCards() {
-    CARD_Y.forEach((cy, i) => {
-      const spec = CARD_SPECS[i];
-      const g = this.add.graphics({ x: CARD_X, y: cy }).setDepth(5);
-      
-      // Shadow
-      g.fillStyle(spec.shadow, 0.45);
-      g.fillRoundedRect(-CARD_W / 2, -CARD_H / 2 + 5, CARD_W, CARD_H, 16);
-      
-      // Locked face (slightly translucent white/grey tint)
-      g.fillStyle(0xffffff, 0.85);
-      g.fillRoundedRect(-CARD_W / 2, -CARD_H / 2, CARD_W, CARD_H, 16);
-      drawDashedRoundedRect(g, -CARD_W / 2, -CARD_H / 2, CARD_W, CARD_H, 16, spec.main, 2, 6, 4);
-
-      // Question mark
-      const txt = this.add.text(CARD_X, cy - 2, '?', {
-        fontFamily: FONT_NUMBERS, fontSize: '32px', color: '#b0c0cc',
-      }).setOrigin(0.5).setDepth(6);
-
-      g.setScale(0); txt.setScale(0);
-      this.tweens.add({ targets: [g, txt], scale: 1, duration: 220, delay: i * 70, ease: 'Back.easeOut' });
-
-      this.lockedCards.push({ bg: g, txt });
-    });
-  }
-
-  _clearLockedCards() {
-    this.lockedCards.forEach(c => {
-      this.tweens.killTweensOf(c.bg);
-      this.tweens.killTweensOf(c.txt);
-      c.bg.destroy();
-      c.txt.destroy();
-    });
-    this.lockedCards = [];
-  }
-
-  // ─────────────────────────────────────────────────────────────
-  //  Starting Objects box layout builder
-  // ─────────────────────────────────────────────────────────────
-  _buildBoxObjects(theme) {
-    const { total } = this.currentProblem;
-    // Align starting objects inside the Cream Container
-    const boxW = LP_W - 64;
-    const spacing = Math.min(48, boxW / Math.max(total - 1, 1));
-    const fontSize = total > 8 ? '24px' : '30px';
-    const startX = LP_CX - ((total - 1) * spacing) / 2;
-
+    this.mainGridTiles = [];
     for (let i = 0; i < total; i++) {
-      const obj = this.add.sprite(startX + i * spacing, BOX_Y, 'sprites', theme.frame)
-        .setOrigin(0.5).setDepth(4);
-      obj.setScale(0);
-      this.tweens.add({ targets: obj, scale: 0.45, duration: 260, delay: i * 55, ease: 'Back.easeOut' });
-      this.boxObjects.push({ text: obj, removed: false });
+      const col = i % COLS, row = Math.floor(i / COLS);
+      const cx  = gridCellCX(col);
+      const cy  = gridCellCY(row, GRID_TOP);
+
+      const tG = this.add.graphics().setDepth(6);
+      tG.fillStyle(0xffffff, 1);    tG.fillRoundedRect(cx - CELL/2, cy - CELL/2, CELL, CELL, 16);
+      tG.lineStyle(1, 0xfcfdfe, 1); tG.strokeRoundedRect(cx - CELL/2, cy - CELL/2, CELL, CELL, 16);
+
+      const sp = this.add.sprite(cx, cy, 'sprites', theme.frame).setOrigin(0.5).setDepth(7).setScale(0);
+      this.tweens.add({ targets: sp, scale: 0.46, duration: 220, delay: i * 28, ease: 'Back.easeOut' });
+
+      this.mainGridTiles.push({ g: tG, sp, removed: false, cx, cy });
+      this.mainGridGroup.push(tG, sp);
     }
+
+    // ── "Tap to remove" label + sub-grid ──────────────────────────────────
+    // 24px gap below main grid (mainPanBottomY + 24 = top of label. lbl2Y = top + 24)
+    const lbl2Y  = this.mainPanBottomY + 48;
+    const subTopY = lbl2Y;
+
+    this._makeLabel('Tap to remove', lbl2Y, this.subGroup);
+    this._buildSubGrid(theme, subTopY);
   }
 
-  // ─────────────────────────────────────────────────────────────
-  //  Subtraction objects inside green zone (clickable row)
-  // ─────────────────────────────────────────────────────────────
-  _buildSubtractionObjects(theme) {
+  // ── Sub-grid (tap-to-remove zone) ─────────────────────────────────────────
+  _buildSubGrid(theme, subTopY) {
     const { subtract } = this.currentProblem;
-    const boxW = LP_W - 64;
-    const spacing = Math.min(54, boxW / Math.max(subtract - 1, 1));
-    const fontSize = subtract > 7 ? '26px' : '36px';
-    const startX = LP_CX - ((subtract - 1) * spacing) / 2;
+    const panH = subPanelHeight(subtract);
+
+    const panG = this.add.graphics().setDepth(5);
+    panG.fillStyle(0x65D570, 0.2);   panG.fillRoundedRect(SUB_PAN_X, subTopY, SUB_PAN_W, panH, 24);
+    panG.lineStyle(4, 0xffffff, 1);  panG.strokeRoundedRect(SUB_PAN_X, subTopY, SUB_PAN_W, panH, 24);
+    this.subGroup.push(panG);
 
     for (let i = 0; i < subtract; i++) {
-      const x = startX + i * spacing;
+      const col = i % COLS, row = Math.floor(i / COLS);
+      const cx  = subCellCX(col);
+      const cy  = subCellCY(row, subTopY);
+      const cs  = SUB_CELL;   // cell size stored on tile for use in _onSubTap
 
-      // Soft semi-transparent white circle background for butterfly
-      const bgCircle = this.add.circle(x, SUB_Y, 26, 0xffffff, 0.72)
-        .setDepth(3).setScale(0);
-      this.tweens.add({ targets: bgCircle, scale: 1, duration: 250, delay: i * 60, ease: 'Back.easeOut' });
-      this.subBgCircles.push(bgCircle);
+      const tG = this.add.graphics().setDepth(6);
+      // Drop shadow — Y offset 4, blur approximated with two stacked semi-transparent layers
+      tG.fillStyle(0x000000, 0.18); tG.fillRoundedRect(cx - cs/2 - 2, cy - cs/2 + 2, cs + 4, cs + 4, 17);
+      tG.fillStyle(0x000000, 0.22); tG.fillRoundedRect(cx - cs/2,     cy - cs/2 + 4, cs,     cs,     16);
+      // White card face
+      tG.fillStyle(0xffffff, 1);    tG.fillRoundedRect(cx - cs/2, cy - cs/2, cs, cs, 16);
+      // Stroke #CDCDCD 1px
+      tG.lineStyle(1, 0xCDCDCD, 1); tG.strokeRoundedRect(cx - cs/2, cy - cs/2, cs, cs, 16);
 
-      // Glow rings pulsator
-      const ring = this.add.circle(x, SUB_Y, 26, 0x88cc44, 0.22).setDepth(3);
-      this.tweens.add({ targets: ring, scale: 1.45, alpha: 0, duration: 900, delay: i * 110, repeat: -1, ease: 'Sine.easeOut' });
-
-      const obj = this.add.sprite(x, SUB_Y, 'sprites', theme.frame)
-        .setOrigin(0.5).setDepth(5);
-      obj.setScale(0);
-      obj.setInteractive({ useHandCursor: true });
-      obj.input.enabled = false;
-      this.tweens.add({ 
-        targets: obj, scale: 0.45, duration: 300, delay: 200 + i * 70, ease: 'Back.easeOut',
-        onComplete: () => { obj.input.enabled = true; }
+      const sp = this.add.sprite(cx, cy, 'sprites', theme.frame).setOrigin(0.5).setDepth(7).setScale(0);
+      sp.setInteractive({ useHandCursor: true });
+      sp.input.enabled = false;
+      this.tweens.add({
+        targets: sp, scale: 0.42, duration: 250, delay: 220 + i * 38, ease: 'Back.easeOut',
+        onComplete: () => { sp.input.enabled = true; },
       });
-      obj.userData = { clicked: false, ring, bgCircle };
 
-      obj.on('pointerover', () => {
-        if (!obj.userData.clicked) {
-          this.tweens.add({ targets: obj, scale: 0.55, duration: 90 });
-          playClick();
-        }
-      });
-      obj.on('pointerout', () => {
-        if (!obj.userData.clicked) this.tweens.add({ targets: obj, scale: 0.45, duration: 90 });
-      });
-      obj.on('pointerdown', () => this._onSubtractionObjectClick(obj));
+      const tile = { g: tG, sp, clicked: false, cx, cy, cs };
+      sp.on('pointerover', () => { if (!tile.clicked) { this.tweens.add({ targets: sp, scale: 0.50, duration: 80 }); playClick(); } });
+      sp.on('pointerout',  () => { if (!tile.clicked) this.tweens.add({ targets: sp, scale: 0.42, duration: 80 }); });
+      sp.on('pointerdown', () => this._onSubTap(tile));
 
-      this.subObjects.push(obj);
+      this.subGroup.push(tG, sp);
     }
   }
 
-  // ─────────────────────────────────────────────────────────────
-  //  Subtraction click logic
-  // ─────────────────────────────────────────────────────────────
-  _onSubtractionObjectClick(obj) {
-    if (obj.userData.clicked || this.roundComplete) return;
-    obj.userData.clicked = true;
-    obj.disableInteractive();
+  // ── Sub-tile tap ──────────────────────────────────────────────────────────
+  _onSubTap(tile) {
+    if (tile.clicked || this.step !== 1) return;
+    tile.clicked = true;
+    tile.sp.disableInteractive();
     playPop();
 
-    // Kill pointer scale ring
-    if (obj.userData.ring) {
-      this.tweens.killTweensOf(obj.userData.ring);
-      obj.userData.ring.destroy();
-    }
+    const { cx, cy, cs } = tile;
 
-    // Shrink white bg circle
-    if (obj.userData.bgCircle) {
-      this.tweens.add({ targets: obj.userData.bgCircle, scale: 0.65, alpha: 0.35, duration: 250 });
-    }
+    // Purple border flash
+    tile.g.clear();
+    tile.g.fillStyle(0x9c27b0, 1);  tile.g.fillRoundedRect(cx - cs/2 - 3, cy - cs/2 - 3, cs + 6, cs + 6, 18);
+    tile.g.fillStyle(0xffffff, 1);  tile.g.fillRoundedRect(cx - cs/2, cy - cs/2, cs, cs, 16);
 
-    // Animate removal pop
-    this.tweens.add({
-      targets: obj, scale: 0.65, duration: 90, ease: 'Quad.easeOut',
-      onComplete: () => {
-        this.tweens.add({ targets: obj, scale: 0.25, alpha: 0.3, duration: 240, ease: 'Quad.easeIn' });
-        obj.setTint(0x888888);
-      },
+    this.time.delayedCall(230, () => {
+      tile.g.clear();
+      tile.g.fillStyle(0xcccccc, 1); tile.g.fillRoundedRect(cx - cs/2, cy - cs/2, cs, cs, 16);
+      tile.sp.setTint(0xbbbbbb);
+      this.tweens.add({ targets: tile.sp, scale: 0.3, duration: 180, ease: 'Quad.easeIn' });
     });
 
-    this._spawnSparkle(obj.x, obj.y, C_GOLD);
-    this._greyOutOneBoxObject();
+    this._spawnSparkle(cx, cy, C_GOLD);
+    this._greyMainTile(this.removedCount);
     this.removedCount++;
 
     if (this.removedCount >= this.currentProblem.subtract) {
-      this.roundComplete = true;
-      this.time.delayedCall(380, () => this._revealAnswerCards());
+      this.step = 2;
+      this.time.delayedCall(460, () => this._transitionToStep2());
     }
   }
 
-  _greyOutOneBoxObject() {
-    const active = this.boxObjects.find(o => !o.removed);
-    if (!active) return;
-    active.removed = true;
-    this.tweens.add({ targets: active.text, alpha: 0.22, scale: 0.3, duration: 280, ease: 'Quad.easeInOut' });
-    active.text.setTint(0xaaaaaa);
+  // ── Grey out corresponding main grid tile ─────────────────────────────────
+  _greyMainTile(idx) {
+    const t = this.mainGridTiles[idx];
+    if (!t || t.removed) return;
+    t.removed = true;
+    const { cx, cy } = t;
+    t.g.clear();
+    t.g.fillStyle(0xdddddd, 1);    t.g.fillRoundedRect(cx - CELL/2, cy - CELL/2, CELL, CELL, 16);
+    t.sp.setTint(0xbbbbbb);
+    this.tweens.add({ targets: t.sp, scale: 0.3, alpha: 0.38, duration: 240, ease: 'Quad.easeIn' });
   }
 
-  // ─────────────────────────────────────────────────────────────
-  //  Card flip reveal animation
-  // ─────────────────────────────────────────────────────────────
-  _revealAnswerCards() {
-    this._clearLockedCards();
-    this._buildAnswerCards(buildAnswerChoices(this.currentProblem.answer));
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  Step 2 — Remaining Objects + 2×2 answer buttons
+  // ═══════════════════════════════════════════════════════════════════════════
+  _transitionToStep2() {
+    this._clearSubGroup();
+    this._makeLabel('Remaining Objects', LBL1_CY, this.step2Group);
+    this._highlightRemaining();
+    this._buildAnswerButtons(buildAnswerChoices(this.currentProblem.answer));
   }
 
-  _buildAnswerCards(choices) {
-    choices.forEach((val, i) => {
-      const cy = CARD_Y[i];
-      const spec = CARD_SPECS[i];
-      
-      const g = this.add.graphics({ x: CARD_X, y: cy }).setDepth(6);
-      
-      // Shadow
-      g.fillStyle(spec.shadow, 1);
-      g.fillRoundedRect(-CARD_W / 2, -CARD_H / 2 + 6, CARD_W, CARD_H, 16);
-      // Main Body
-      g.fillStyle(spec.main, 1);
-      g.fillRoundedRect(-CARD_W / 2, -CARD_H / 2, CARD_W, CARD_H, 16);
-      // Glossy shine top half
-      g.fillStyle(spec.highlight, 0.42);
-      g.fillRoundedRect(-CARD_W / 2 + 5, -CARD_H / 2 + 4, CARD_W - 10, CARD_H * 0.38, 8);
-      // Clean white borders
-      g.lineStyle(3.5, 0xffffff, 1);
-      g.strokeRoundedRect(-CARD_W / 2, -CARD_H / 2, CARD_W, CARD_H, 16);
-
-      // Low-opacity background decorative stars floating inside cards
-      const sL1 = this.add.sprite(CARD_X - CARD_W / 2 + 30, cy - 12, 'sprites', 'sprite_33').setAlpha(0.2).setOrigin(0.5).setDepth(7);
-      const sL2 = this.add.sprite(CARD_X - CARD_W / 2 + 46, cy + 12, 'sprites', 'sprite_33').setAlpha(0.2).setOrigin(0.5).setDepth(7).setScale(0.7);
-      const sR1 = this.add.sprite(CARD_X + CARD_W / 2 - 30, cy + 12, 'sprites', 'sprite_33').setAlpha(0.2).setOrigin(0.5).setDepth(7);
-      const sR2 = this.add.sprite(CARD_X + CARD_W / 2 - 46, cy - 12, 'sprites', 'sprite_33').setAlpha(0.2).setOrigin(0.5).setDepth(7).setScale(0.7);
-
-      // Value number text with white thick outline
-      const txt = this.add.text(CARD_X, cy - 2, `${val}`, {
-        fontFamily: FONT_NUMBERS, fontSize: '38px', color: spec.textColor,
-        stroke: '#ffffff', strokeThickness: 5,
-      }).setOrigin(0.5).setDepth(8);
-
-      // Card Flip reveal animation (Locked question cards flip into these revealed ones)
-      g.setScale(0, 1);
-      txt.setScale(0, 1);
-      sL1.setScale(0); sL2.setScale(0); sR1.setScale(0); sR2.setScale(0);
-
-      // Hit area
-      const hit = this.add.rectangle(CARD_X, cy, CARD_W, CARD_H + 8, 0, 0)
-        .setInteractive({ useHandCursor: true }).setDepth(9);
-      hit.input.enabled = false;
-
-      this.tweens.add({
-        targets: [g, txt], scaleX: 1, duration: 180, delay: i * 80, ease: 'Sine.easeOut',
-        onComplete: () => {
-          this.tweens.add({ targets: [sL1, sR1], scale: 0.35, duration: 120 });
-          this.tweens.add({ targets: [sL2, sR2], scale: 0.25, duration: 120 });
-          this._spawnSparkle(CARD_X, cy, C_GOLD);
-          hit.input.enabled = true;
-          
-          // Float removed per user request
-        }
-      });
-
-      hit.on('pointerover', () => {
-        if (this.answerLocked) return;
-        this.tweens.killTweensOf([txt]);
-        this.tweens.add({ targets: [txt], scale: 1.15, duration: 80 });
-        g.setAlpha(0.92);
-        playClick();
-      });
-      hit.on('pointerout', () => {
-        if (this.answerLocked) return;
-        this.tweens.killTweensOf([txt]);
-        g.setAlpha(1);
-        this.tweens.add({ targets: [txt], scale: 1, duration: 80 });
-        // Float removed per user request
-      });
-      hit.on('pointerdown', () => this._onAnswerCardClick(val, g, txt, i, hit));
-
-      this.answerCards.push({ bg: g, txt, hit, value: val, decor: [sL1, sL2, sR1, sR2] });
+  // ── Highlight tiles that are still remaining ──────────────────────────────
+  _highlightRemaining() {
+    this.mainGridTiles.forEach(t => {
+      if (t.removed) return;
+      const { cx, cy } = t;
+      const h = this.add.graphics().setDepth(6);
+      h.lineStyle(3.5, 0x9c27b0, 1);
+      h.strokeRoundedRect(cx - CELL/2, cy - CELL/2, CELL, CELL, 16);
+      t.sp.clearTint();
+      this.tweens.killTweensOf(t.sp);
+      this.tweens.add({ targets: t.sp, scale: 0.5, duration: 200, ease: 'Back.easeOut' });
+      this.step2Group.push(h);
     });
   }
 
-  // ─────────────────────────────────────────────────────────────
-  //  Answer validation
-  // ─────────────────────────────────────────────────────────────
-  _onAnswerCardClick(val, bg, txt, cardIdx, hit) {
+  // ── 2×2 answer buttons ────────────────────────────────────────────────────
+  _buildAnswerButtons(choices) {
+    const startY = this.mainPanBottomY + 24;
+
+    choices.forEach((val, i) => {
+      const col  = i % 2;
+      const row  = Math.floor(i / 2);
+      const bx   = GRID_X + col * (BTN_W + BTN_GAP);
+      const by   = startY + row * (BTN_H + BTN_GAP);
+      const bcx  = bx + BTN_W / 2;
+      const bcy  = by + BTN_H / 2;
+      const clr  = BTN_COLORS[i];
+      const shd  = BTN_SHADOWS[i];
+
+      // Graphics centred at (bcx, bcy) so tweening .x works naturally
+      const g = this.add.graphics({ x: bcx, y: bcy }).setDepth(10);
+      
+      // Solid fill matching the new screenshot
+      g.fillStyle(clr, 1);
+      g.fillRoundedRect(-BTN_W/2, -BTN_H/2, BTN_W, BTN_H, 24);
+      
+      // White 4px stroke
+      g.lineStyle(4, 0xffffff, 1);
+      g.strokeRoundedRect(-BTN_W/2, -BTN_H/2, BTN_W, BTN_H, 24);
+      g.setScale(0);
+
+      const txt = this.add.text(bcx, bcy, `${val}`, {
+        fontFamily: FONT_BODY, fontSize: '46px', color: '#ffffff', fontStyle: '600',
+        stroke: '#6E40D9', strokeThickness: 5
+      }).setOrigin(0.5).setDepth(11).setScale(0);
+
+      const hit = this.add.rectangle(bcx, bcy, BTN_W, BTN_H, 0, 0)
+        .setInteractive({ useHandCursor: true }).setDepth(12);
+      hit.input.enabled = false;
+
+      this.tweens.add({
+        targets: [g, txt], scale: 1, duration: 210, delay: i * 65, ease: 'Back.easeOut',
+        onComplete: () => { hit.input.enabled = true; },
+      });
+
+      hit.on('pointerover', () => { if (!this.answerLocked) { this.tweens.add({ targets: [g, txt], scale: 1.07, duration: 80 }); playClick(); } });
+      hit.on('pointerout',  () => { if (!this.answerLocked) this.tweens.add({ targets: [g, txt], scale: 1, duration: 80 }); });
+      hit.on('pointerdown', () => this._onAnswerTap(val, g, txt, clr, shd));
+
+      this.step2Group.push(g, txt, hit);
+    });
+  }
+
+  // ── Answer tap ────────────────────────────────────────────────────────────
+  _onAnswerTap(val, g, txt, clr, shd) {
     if (this.answerLocked) return;
     this.answerLocked = true;
     val === this.currentProblem.answer
-      ? this._onCorrectAnswer(bg, txt)
-      : this._onWrongAnswer(bg, txt, cardIdx);
+      ? this._onCorrect(g, txt)
+      : this._onWrong(g, txt);
   }
 
-  _onCorrectAnswer(bg, txt) {
+  _onCorrect(g, txt) {
     playSuccess();
     this.score++;
     this.stars += this.wrongAttempts === 0 ? 3 : this.wrongAttempts === 1 ? 2 : 1;
 
-    // Flash green color success
-    bg.clear();
-    bg.fillStyle(0x389010, 1);
-    bg.fillRoundedRect(-CARD_W/2, -CARD_H/2 + 6, CARD_W, CARD_H, 16);
-    bg.fillStyle(0x55c020, 1);
-    bg.fillRoundedRect(-CARD_W/2, -CARD_H/2, CARD_W, CARD_H, 16);
-    bg.lineStyle(3.5, 0xffffff, 1);
-    bg.strokeRoundedRect(-CARD_W/2, -CARD_H/2, CARD_W, CARD_H, 16);
+    g.clear();
+    g.fillStyle(0x218a00, 1); g.fillRoundedRect(-BTN_W/2, -BTN_H/2 + 7, BTN_W, BTN_H, 36);
+    g.fillStyle(0x33cc00, 1); g.fillRoundedRect(-BTN_W/2, -BTN_H/2, BTN_W, BTN_H, 36);
+    g.lineStyle(3, 0xffffff, 1); g.strokeRoundedRect(-BTN_W/2, -BTN_H/2, BTN_W, BTN_H, 36);
 
-    this.tweens.add({ targets: [bg, txt], scale: 1.25, duration: 200, yoyo: true, ease: 'Back.easeOut' });
-    this.cameras.main.flash(200, 240, 255, 220);
+    this.tweens.add({ targets: [g, txt], scale: 1.2, duration: 180, yoyo: true, ease: 'Back.easeOut' });
+    this.cameras.main.flash(180, 230, 255, 200);
     this._spawnConfetti();
-    this._spawnStarBurst(txt.x, txt.y);
     this._updateHUD();
-    
     this.time.delayedCall(1100, () => this._nextRound());
   }
 
-  _onWrongAnswer(bg, txt, cardIdx) {
+  _onWrong(g, txt) {
     playWrong();
     this.wrongAttempts++;
 
-    const ox = txt.x;
     this.tweens.add({
-      targets: [bg, txt], x: { from: ox - 10, to: ox + 10 },
-      duration: 70, yoyo: true, repeat: 4, ease: 'Linear',
+      targets: [g, txt], x: '+=9',
+      duration: 65, yoyo: true, repeat: 4, ease: 'Linear',
       onComplete: () => {
-        bg.x = ox; txt.x = ox;
         this.time.delayedCall(180, () => {
-          this._clearAnswerCards();
+          this._clearStep2();
           this.answerLocked = false;
-          this._buildAnswerCards(buildAnswerChoices(this.currentProblem.answer));
+          this._makeLabel('Remaining Objects', LBL1_CY, this.step2Group);
+          this._highlightRemaining();
+          this._buildAnswerButtons(buildAnswerChoices(this.currentProblem.answer));
         });
       },
     });
   }
 
-  // ─────────────────────────────────────────────────────────────
-  //  Particle effects
-  // ─────────────────────────────────────────────────────────────
-  _spawnSparkle(x, y, color) {
-    for (let i = 0; i < 8; i++) {
-      const a   = (Math.PI * 2 / 8) * i;
-      const dot = this.add.circle(x, y, PMath.Between(3, 7), color).setDepth(14);
-      this.tweens.add({ targets: dot, x: x + Math.cos(a) * PMath.Between(18, 40), y: y + Math.sin(a) * PMath.Between(18, 40), alpha: 0, scale: 0.2, duration: PMath.Between(350, 560), ease: 'Quad.easeOut', onComplete: () => dot.destroy() });
-    }
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  Shared UI helper — pill label
+  // ═══════════════════════════════════════════════════════════════════════════
+  _makeLabel(text, centerY, group) {
+    const lW = 190, lH = 48;
+    const g = this.add.graphics().setDepth(8);
+    g.fillStyle(0xffffff, 1);    g.fillRoundedRect(CX - lW/2, centerY - lH/2, lW, lH, 16);
+    g.lineStyle(1, 0xfcfdfe, 1); g.strokeRoundedRect(CX - lW/2, centerY - lH/2, lW, lH, 16);
+    const t = this.add.text(CX, centerY, text, {
+      fontFamily: FONT_BODY,
+      fontStyle: '600',
+      fontSize: '16px',
+      color: '#8254DA',
+      letterSpacing: 1,
+    }).setOrigin(0.5).setDepth(9);
+    group.push(g, t);
   }
 
-  _spawnStarBurst(x, y) {
-    const frames = ['sprite_33', 'sprite_34', 'sprite_33', 'sprite_34', 'sprite_33'];
-    frames.forEach((frame, i) => {
-      const a    = (Math.PI * 2 / 5) * i - Math.PI / 2;
-      const star = this.add.sprite(x, y, 'sprites', frame).setOrigin(0.5).setDepth(16);
-      this.tweens.add({ targets: star, x: x + Math.cos(a) * 60, y: y + Math.sin(a) * 60, alpha: 0, scale: 0.2, duration: 680, ease: 'Cubic.easeOut', onComplete: () => star.destroy() });
-    });
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  Particle effects
+  // ═══════════════════════════════════════════════════════════════════════════
+  _spawnSparkle(x, y, color) {
+    for (let i = 0; i < 7; i++) {
+      const a = (Math.PI * 2 / 7) * i;
+      const d = this.add.circle(x, y, PMath.Between(3, 6), color).setDepth(14);
+      this.tweens.add({
+        targets: d,
+        x: x + Math.cos(a) * PMath.Between(14, 34),
+        y: y + Math.sin(a) * PMath.Between(14, 34),
+        alpha: 0, scale: 0.2,
+        duration: PMath.Between(280, 480), ease: 'Quad.easeOut',
+        onComplete: () => d.destroy(),
+      });
+    }
   }
 
   _spawnConfetti() {
     const cols = [0xff6b6b, 0x4ecdc4, C_GOLD, C_PURPLE, 0xff7597, 0x4ba3e3];
-    for (let i = 0; i < 40; i++) {
-      const x = PMath.Between(LP_X + 10, LP_X + LP_W - 10);
-      const y = PMath.Between(P_Y + 10, P_Y + 200);
-      const r = PMath.Between(4, 10);
-      const p = this.add.circle(x, y, r, cols[i % cols.length]).setDepth(15);
-      this.tweens.add({ targets: p, y: y + PMath.Between(80, 200), x: x + PMath.Between(-35, 35), alpha: 0, angle: PMath.Between(-180, 180), duration: PMath.Between(700, 1300), ease: 'Cubic.easeIn', onComplete: () => p.destroy() });
+    for (let i = 0; i < 32; i++) {
+      const x = PMath.Between(50, GAME_W - 50);
+      const y = PMath.Between(100, 440);
+      const p = this.add.circle(x, y, PMath.Between(4, 9), cols[i % cols.length]).setDepth(15);
+      this.tweens.add({
+        targets: p,
+        y: y + PMath.Between(80, 200), x: x + PMath.Between(-30, 30),
+        alpha: 0, angle: PMath.Between(-180, 180),
+        duration: PMath.Between(700, 1300), ease: 'Cubic.easeIn',
+        onComplete: () => p.destroy(),
+      });
     }
   }
 
-  // ─────────────────────────────────────────────────────────────
-  //  Cleanup and Navigation
-  // ─────────────────────────────────────────────────────────────
-  _clearObjects() {
-    this.boxObjects.forEach(o => { this.tweens.killTweensOf(o.text); o.text.destroy(); });
-    this.boxObjects = [];
-    this.subObjects.forEach(o => {
-      if (o.userData?.ring) { this.tweens.killTweensOf(o.userData.ring); o.userData.ring.destroy(); }
-      this.tweens.killTweensOf(o); o.destroy();
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  Cleanup helpers
+  // ═══════════════════════════════════════════════════════════════════════════
+  _clearAll() {
+    [this.equationGroup, this.mainGridGroup, this.subGroup, this.step2Group].forEach(grp => {
+      grp.forEach(o => { this.tweens.killTweensOf(o); o?.destroy?.(); });
     });
-    this.subObjects = [];
-    this.subBgCircles.forEach(c => { this.tweens.killTweensOf(c); c.destroy(); });
-    this.subBgCircles = [];
+    this.equationGroup = [];
+    this.mainGridGroup = [];
+    this.mainGridTiles = [];
+    this.subGroup      = [];
+    this.step2Group    = [];
   }
 
-  _clearAnswerCards() {
-    this.answerCards.forEach(c => {
-      this.tweens.killTweensOf(c.bg); this.tweens.killTweensOf(c.txt);
-      c.bg.destroy(); c.txt.destroy(); c.hit?.destroy();
-      if (c.decor) c.decor.forEach(d => { this.tweens.killTweensOf(d); d.destroy(); });
-    });
-    this.answerCards = [];
+  _clearSubGroup() {
+    this.subGroup.forEach(o => { this.tweens.killTweensOf(o); o?.destroy?.(); });
+    this.subGroup = [];
   }
 
+  _clearStep2() {
+    this.step2Group.forEach(o => { this.tweens.killTweensOf(o); o?.destroy?.(); });
+    this.step2Group = [];
+  }
+
+  // ─── Win ──────────────────────────────────────────────────────────────────
   _goToWin() {
     this.cameras.main.flash(300, 255, 255, 255);
     this.time.delayedCall(350, () => this.scene.start('WinScene', { score: this.score, stars: this.stars }));
